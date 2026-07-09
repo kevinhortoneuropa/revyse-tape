@@ -39,6 +39,13 @@ export default tseslint.config(
       ],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       eqeqeq: ['error', 'always', { null: 'ignore' }],
+      // Throwing a Response is how a Remix loader hands control to an
+      // ErrorBoundary with a status code. It is the framework's contract, not a
+      // mistake — but nothing else may be thrown.
+      '@typescript-eslint/only-throw-error': [
+        'error',
+        { allow: [{ from: 'lib', name: 'Response' }] },
+      ],
     },
   },
 

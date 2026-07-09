@@ -44,28 +44,28 @@ describe('formatUsd', () => {
 })
 
 describe('formatBtc', () => {
-  it('quotes BTC against itself as exactly one', () => {
-    expect(formatBtc(btc(1))).toBe('1.00000000 BTC')
+  it('quotes against itself as exactly one', () => {
+    expect(formatBtc(btc(1))).toBe('1.00000000')
   })
 
   it('uses satoshi precision — eight decimals', () => {
-    expect(formatBtc(btc(0.027615764))).toBe('0.02761576 BTC')
-    expect(formatBtc(btc(0.0012342365))).toBe('0.00123424 BTC')
-    expect(formatBtc(btc(0.0000011576702))).toBe('0.00000116 BTC')
+    expect(formatBtc(btc(0.027615764))).toBe('0.02761576')
+    expect(formatBtc(btc(0.0012342365))).toBe('0.00123424')
+    expect(formatBtc(btc(0.0000011576702))).toBe('0.00000116')
   })
 
   // Below one satoshi, eight fixed decimals round to zero. SHIB's real BTC
-  // price is 6.8e-11 and must not render as "0.00000000 BTC".
+  // price is 6.8e-11 and must not render as "0.00000000".
   it('falls back to significant digits below one satoshi', () => {
     const formatted = formatBtc(btc(6.78656e-11))
 
-    expect(formatted).not.toBe('0.00000000 BTC')
-    expect(formatted).toBe('0.00000000006787 BTC')
+    expect(formatted).not.toBe('0.00000000')
+    expect(formatted).toBe('0.00000000006787')
   })
 
   it('switches formatting exactly at one satoshi', () => {
-    expect(formatBtc(btc(1e-8))).toBe('0.00000001 BTC')
-    expect(formatBtc(btc(9.9e-9))).toBe('0.0000000099 BTC')
+    expect(formatBtc(btc(1e-8))).toBe('0.00000001')
+    expect(formatBtc(btc(9.9e-9))).toBe('0.0000000099')
   })
 
   it('reuses cached formatter instances across calls', () => {

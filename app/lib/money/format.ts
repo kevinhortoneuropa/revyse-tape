@@ -62,15 +62,17 @@ export function formatUsd(price: UsdPrice): string {
 /**
  * BTC prices are conventionally quoted to eight decimals — one satoshi. Assets
  * cheaper than a satoshi's worth of BTC fall back to significant digits.
+ *
+ * Returns a bare number. The unit belongs to the label beside it, so a screen
+ * reader hears "BTC, 1.00000000" rather than "BTC, 1.00000000 BTC".
  */
 export function formatBtc(price: BtcPrice): string {
-  const value =
-    price >= SATOSHI
-      ? formatter('btc-normal', {
-          minimumFractionDigits: 8,
-          maximumFractionDigits: 8,
-        }).format(price)
-      : formatter('btc-dust', { maximumSignificantDigits: 4 }).format(price)
+  if (price >= SATOSHI) {
+    return formatter('btc-normal', {
+      minimumFractionDigits: 8,
+      maximumFractionDigits: 8,
+    }).format(price)
+  }
 
-  return `${value} BTC`
+  return formatter('btc-dust', { maximumSignificantDigits: 4 }).format(price)
 }

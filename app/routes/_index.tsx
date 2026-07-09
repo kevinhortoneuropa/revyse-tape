@@ -1,7 +1,17 @@
-import type { MetaFunction } from '@remix-run/node'
-import { useRouteLoaderData } from '@remix-run/react'
+import type { HeadersFunction, MetaFunction } from '@remix-run/node'
+import {
+  isRouteErrorResponse,
+  useLoaderData,
+  useRouteError,
+  useRouteLoaderData,
+} from '@remix-run/react'
 
+import { Button } from '~/components/ui/Button'
+import { AssetCard } from '~/features/dashboard/components/AssetCard'
+import { coinbase } from '~/features/dashboard/coinbase.server'
 import { ThemeToggle } from '~/features/theme/ThemeToggle'
+import { CoinbaseDataError, CoinbaseUnavailableError } from '~/lib/coinbase/errors'
+import type { QuotedAsset } from '~/lib/domain'
 import type { ThemePreference } from '~/lib/theme'
 
 export const meta: MetaFunction = () => [
@@ -9,15 +19,88 @@ export const meta: MetaFunction = () => [
   { name: 'description', content: 'Live cryptocurrency exchange rates in USD and BTC.' },
 ]
 
+/**
+ * The loader's own TTL cache bounds upstream load; this bounds it again at the
+ * CDN. `max-age=0` keeps browsers from serving a stale board on back-navigation.
+ */
+export const headers: HeadersFunction = () => ({
+  'Cache-Control': 'public, max-age=0, s-maxage=10, stale-while-revalidate=30',
+})
+
+export async function loader() {
+  try {
+    const { assets, fetchedAt } = await coinbase.getDashboardData()
+    return { assets, fetchedAt }
+  } catch (error) {
+    // Both are expected failure modes, not bugs. Turn them into a response the
+    // ErrorBoundary can render, and let anything else bubble as a real 500.
+    if (error instanceof CoinbaseUnavailableError || error instanceof CoinbaseDataError) {
+      throw new Response('Live prices are temporarily unavailable. Please try again shortly.', {
+        status: 503,
+        statusText: 'Service Unavailable',
+      })
+    }
+    throw error
+  }
+}
+
 export default function Dashboard() {
+  const { assets } = useLoaderData<typeof loader>()
   const root = useRouteLoaderData<{ theme: ThemePreference }>('root')
 
   return (
-    <main className="mx-auto max-w-6xl p-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Revyse Tape</h1>
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <header className="mb-6 flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Revyse Tape</h1>
+          <p className="text-sm text-muted">Live exchange rates in USD and BTC.</p>
+        </div>
         <ThemeToggle preference={root?.theme ?? 'system'} />
       </header>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {assets.map((asset: QuotedAsset) => (
+          <AssetCard key={asset.symbol} asset={asset} />
+        ))}
+      </div>
+    </main>
+  )
+}
+
+/**
+ * Scoped to this route, so a Coinbase outage still renders the shell rather
+ * than replacing the whole document with an error page.
+ */
+export function ErrorBoundary() {
+  const error = useRouteError()
+  const isResponse = isRouteErrorResponse(error)
+
+  return (
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <h1 className="text-2xl font-semibold tracking-tight">Revyse Tape</h1>
+
+      <div
+        role="alert"
+        className="mt-6 rounded-xl border border-dashed border-border py-16 text-center"
+      >
+        <p className="font-medium">
+          {isResponse ? 'Live prices are unavailable' : 'Something went wrong'}
+        </p>
+        <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
+          {isResponse && typeof error.data === 'string'
+            ? error.data
+            : 'An unexpected error occurred while loading the dashboard.'}
+        </p>
+        <Button
+          className="mt-6"
+          variant="primary"
+          onClick={() => {
+            window.location.reload()
+          }}
+        >
+          Try again
+        </Button>
+      </div>
     </main>
   )
 }
