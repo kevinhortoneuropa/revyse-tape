@@ -7,12 +7,14 @@ import {
   useRouteLoaderData,
   useSearchParams,
 } from '@remix-run/react'
-import { useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { Button } from '~/components/ui/Button'
 import { AssetGrid } from '~/features/dashboard/components/AssetGrid'
 import { EmptyState } from '~/features/dashboard/components/EmptyState'
 import { FilterInput } from '~/features/dashboard/components/FilterInput'
+import { RefreshControl } from '~/features/dashboard/components/RefreshControl'
+import { useAutoRefresh } from '~/features/dashboard/hooks/useAutoRefresh'
 import { useOrdering } from '~/features/dashboard/hooks/useOrdering'
 import { coinbase } from '~/features/dashboard/coinbase.server'
 import { ThemeToggle } from '~/features/theme/ThemeToggle'
@@ -80,11 +82,22 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
 }
 
 export default function Dashboard() {
-  const { assets } = useLoaderData<typeof loader>()
+  const { assets, fetchedAt } = useLoaderData<typeof loader>()
   const root = useRouteLoaderData<{ theme: ThemePreference }>('root')
 
   const [searchParams] = useSearchParams()
   const { q } = parseDashboardSearch(searchParams)
+
+  // A poll landing mid-drag re-renders the card under the user's cursor.
+  const [isDragging, setIsDragging] = useState(false)
+  const { refresh, isRefreshing } = useAutoRefresh({ paused: isDragging })
+
+  const onDragStart = useCallback(() => {
+    setIsDragging(true)
+  }, [])
+  const onDragEnd = useCallback(() => {
+    setIsDragging(false)
+  }, [])
 
   // The loader owns a map keyed by symbol. The client owns a list of symbols.
   // Rendering is the join of the two, so a 30-second poll replaces every price
@@ -108,7 +121,10 @@ export default function Dashboard() {
           <h1 className="text-2xl font-semibold tracking-tight">Revyse Tape</h1>
           <p className="text-sm text-muted">Live exchange rates in USD and BTC.</p>
         </div>
-        <ThemeToggle preference={root?.theme ?? 'system'} />
+        <div className="flex items-center gap-3">
+          <RefreshControl fetchedAt={fetchedAt} isRefreshing={isRefreshing} onRefresh={refresh} />
+          <ThemeToggle preference={root?.theme ?? 'system'} />
+        </div>
       </header>
 
       <div className="mb-6 max-w-sm">
@@ -118,7 +134,7 @@ export default function Dashboard() {
       {visible.length === 0 ? (
         <EmptyState query={q} />
       ) : (
-        <AssetGrid assets={visible} onMove={move} />
+        <AssetGrid assets={visible} onMove={move} onDragStart={onDragStart} onDragEnd={onDragEnd} />
       )}
     </main>
   )
