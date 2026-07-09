@@ -1,5 +1,7 @@
 # Revyse Tape
 
+[![CI](https://github.com/kevinhortoneuropa/revyse-tape/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kevinhortoneuropa/revyse-tape/actions/workflows/ci.yml)
+
 A cryptocurrency dashboard built with Remix and React. Live Coinbase exchange
 rates in USD and BTC, drag-to-reorder cards, filter by name or symbol, and a dark
 mode that never flashes.
