@@ -95,12 +95,17 @@ export default tseslint.config(
   },
 
   // Test files: relax the strictest type rules; mocks legitimately lie.
+  //
+  // objectLiteralTypeAssertions stays banned in app code, where an `as` cast
+  // defeats branded prices. In a test, constructing a full dnd-kit `Active`
+  // just to assert on an announcement string is noise, not safety.
   {
     files: ['**/*.test.{ts,tsx}', '**/test/**', 'e2e/**'],
     rules: {
       '@typescript-eslint/no-non-null-assertion': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/unbound-method': 'off',
+      '@typescript-eslint/consistent-type-assertions': 'off',
     },
   },
 

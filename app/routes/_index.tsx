@@ -10,9 +10,10 @@ import {
 import { useMemo } from 'react'
 
 import { Button } from '~/components/ui/Button'
-import { AssetCard } from '~/features/dashboard/components/AssetCard'
+import { AssetGrid } from '~/features/dashboard/components/AssetGrid'
 import { EmptyState } from '~/features/dashboard/components/EmptyState'
 import { FilterInput } from '~/features/dashboard/components/FilterInput'
+import { useOrdering } from '~/features/dashboard/hooks/useOrdering'
 import { coinbase } from '~/features/dashboard/coinbase.server'
 import { ThemeToggle } from '~/features/theme/ThemeToggle'
 import { CoinbaseDataError, CoinbaseUnavailableError } from '~/lib/coinbase/errors'
@@ -85,7 +86,20 @@ export default function Dashboard() {
   const [searchParams] = useSearchParams()
   const { q } = parseDashboardSearch(searchParams)
 
-  const visible = useMemo(() => filterAssets(assets, q), [assets, q])
+  // The loader owns a map keyed by symbol. The client owns a list of symbols.
+  // Rendering is the join of the two, so a 30-second poll replaces every price
+  // without disturbing a single card's position.
+  const available = useMemo(() => assets.map((asset) => asset.symbol), [assets])
+  const { ordering, move } = useOrdering(available)
+
+  const bySymbol = useMemo(() => new Map(assets.map((asset) => [asset.symbol, asset])), [assets])
+
+  const arranged = useMemo(
+    () => ordering.flatMap((symbol) => bySymbol.get(symbol) ?? []),
+    [ordering, bySymbol],
+  )
+
+  const visible = useMemo(() => filterAssets(arranged, q), [arranged, q])
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -104,11 +118,7 @@ export default function Dashboard() {
       {visible.length === 0 ? (
         <EmptyState query={q} />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {visible.map((asset) => (
-            <AssetCard key={asset.symbol} asset={asset} />
-          ))}
-        </div>
+        <AssetGrid assets={visible} onMove={move} />
       )}
     </main>
   )
