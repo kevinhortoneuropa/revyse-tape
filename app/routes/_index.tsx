@@ -1,18 +1,24 @@
 import type { HeadersFunction, MetaFunction } from '@remix-run/node'
+import type { ShouldRevalidateFunction } from '@remix-run/react'
 import {
   isRouteErrorResponse,
   useLoaderData,
   useRouteError,
   useRouteLoaderData,
+  useSearchParams,
 } from '@remix-run/react'
+import { useMemo } from 'react'
 
 import { Button } from '~/components/ui/Button'
 import { AssetCard } from '~/features/dashboard/components/AssetCard'
+import { EmptyState } from '~/features/dashboard/components/EmptyState'
+import { FilterInput } from '~/features/dashboard/components/FilterInput'
 import { coinbase } from '~/features/dashboard/coinbase.server'
 import { ThemeToggle } from '~/features/theme/ThemeToggle'
 import { CoinbaseDataError, CoinbaseUnavailableError } from '~/lib/coinbase/errors'
-import type { QuotedAsset } from '~/lib/domain'
+import { filterAssets } from '~/lib/filter/match'
 import type { ThemePreference } from '~/lib/theme'
+import { parseDashboardSearch } from '~/lib/url/search-params'
 
 export const meta: MetaFunction = () => [
   { title: 'Revyse Tape' },
@@ -44,13 +50,46 @@ export async function loader() {
   }
 }
 
+/**
+ * What makes URL-backed filter state affordable.
+ *
+ * Remix re-runs a route's loader on every navigation, and `setSearchParams` is
+ * a navigation. Without this, every keystroke in the filter box would hit
+ * Coinbase. Filtering is a client-side concern over data the loader already
+ * has, so a search-only change must never refetch.
+ *
+ * `useRevalidator()`, which the refresh timer calls, leaves the URL untouched
+ * and so falls through to the default and does refetch. That is the whole point.
+ */
+export const shouldRevalidate: ShouldRevalidateFunction = ({
+  currentUrl,
+  nextUrl,
+  formAction,
+  defaultShouldRevalidate,
+}) => {
+  // Changing the theme cannot change a price.
+  if (formAction === '/theme') return false
+
+  // Same page, different query string: the user is typing in the filter.
+  if (currentUrl.pathname === nextUrl.pathname && currentUrl.search !== nextUrl.search) {
+    return false
+  }
+
+  return defaultShouldRevalidate
+}
+
 export default function Dashboard() {
   const { assets } = useLoaderData<typeof loader>()
   const root = useRouteLoaderData<{ theme: ThemePreference }>('root')
 
+  const [searchParams] = useSearchParams()
+  const { q } = parseDashboardSearch(searchParams)
+
+  const visible = useMemo(() => filterAssets(assets, q), [assets, q])
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <header className="mb-6 flex items-center justify-between gap-4">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Revyse Tape</h1>
           <p className="text-sm text-muted">Live exchange rates in USD and BTC.</p>
@@ -58,11 +97,19 @@ export default function Dashboard() {
         <ThemeToggle preference={root?.theme ?? 'system'} />
       </header>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {assets.map((asset: QuotedAsset) => (
-          <AssetCard key={asset.symbol} asset={asset} />
-        ))}
+      <div className="mb-6 max-w-sm">
+        <FilterInput value={q} matchCount={visible.length} totalCount={assets.length} />
       </div>
+
+      {visible.length === 0 ? (
+        <EmptyState query={q} />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {visible.map((asset) => (
+            <AssetCard key={asset.symbol} asset={asset} />
+          ))}
+        </div>
+      )}
     </main>
   )
 }

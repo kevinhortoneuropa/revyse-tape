@@ -11,7 +11,21 @@ vi.mock('~/features/dashboard/coinbase.server', () => ({
   },
 }))
 
-const { headers, loader } = await import('./_index')
+const { headers, loader, shouldRevalidate } = await import('./_index')
+
+type RevalidateArgs = Parameters<typeof shouldRevalidate>[0]
+
+/** A plain navigation with no form submission and no query string. */
+const baseArgs: RevalidateArgs = {
+  currentUrl: new URL('http://localhost/'),
+  currentParams: {},
+  nextUrl: new URL('http://localhost/'),
+  nextParams: {},
+  defaultShouldRevalidate: true,
+}
+
+const revalidate = (overrides: Partial<RevalidateArgs>): boolean =>
+  shouldRevalidate({ ...baseArgs, ...overrides })
 
 beforeEach(() => {
   getDashboardData.mockReset()
@@ -47,6 +61,53 @@ describe('dashboard loader', () => {
   it('lets an unexpected error bubble as a real failure', async () => {
     getDashboardData.mockRejectedValue(new TypeError('undefined is not a function'))
     await expect(loader()).rejects.toThrow(TypeError)
+  })
+})
+
+describe('dashboard shouldRevalidate', () => {
+  // The whole reason URL-backed filter state is affordable. setSearchParams is
+  // a navigation, and Remix re-runs loaders on navigation, so without this each
+  // keystroke would hit Coinbase.
+  it('does not refetch when only the query string changes', () => {
+    expect(
+      revalidate({
+        currentUrl: new URL('http://localhost/'),
+        nextUrl: new URL('http://localhost/?q=eth'),
+      }),
+    ).toBe(false)
+  })
+
+  it('does not refetch as the filter is edited', () => {
+    expect(
+      revalidate({
+        currentUrl: new URL('http://localhost/?q=et'),
+        nextUrl: new URL('http://localhost/?q=eth'),
+      }),
+    ).toBe(false)
+  })
+
+  // Changing the theme cannot change a price.
+  it('does not refetch on a theme submission', () => {
+    expect(revalidate({ formAction: '/theme' })).toBe(false)
+  })
+
+  // useRevalidator() leaves the URL untouched, so it must fall through and
+  // actually refetch — otherwise the auto-refresh timer would do nothing.
+  it('refetches when the URL is unchanged, as useRevalidator leaves it', () => {
+    expect(revalidate({})).toBe(true)
+  })
+
+  it('refetches on a real navigation to another path', () => {
+    expect(
+      revalidate({
+        currentUrl: new URL('http://localhost/other'),
+        nextUrl: new URL('http://localhost/'),
+      }),
+    ).toBe(true)
+  })
+
+  it('honours the default when Remix says not to revalidate', () => {
+    expect(revalidate({ defaultShouldRevalidate: false })).toBe(false)
   })
 })
 
