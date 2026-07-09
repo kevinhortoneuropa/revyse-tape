@@ -42,6 +42,7 @@
     "@eslint/js": "9.39.4",
     "@playwright/test": "1.57.0",
     "@remix-run/dev": "2.17.5",
+    "@remix-run/testing": "2.17.5",
     "@tailwindcss/vite": "4.3.2",
     "@testing-library/dom": "10.4.1",
     "@testing-library/jest-dom": "6.9.1",

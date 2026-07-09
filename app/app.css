@@ -1,10 +1,5 @@
 @import 'tailwindcss';
 
-/*
- * Dark mode is driven by a class on <html>, not by prefers-color-scheme, because
- * the class is written server-side from a cookie. The server therefore emits the
- * correct theme in the first byte and there is no flash of the wrong one.
- */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
@@ -12,51 +7,101 @@
  *
  * The alternative — sprinkling `dark:bg-gray-900` across every element — works
  * and rots: each new component is a fresh chance to forget a variant, and
- * nothing can check that you didn't. Here, dark mode is a property of the theme
+ * nothing can check that you didn't. Here dark mode is a property of the theme
  * rather than of the component, so it cannot be forgotten. Components never
  * mention a colour mode at all.
  *
+ * Both palettes are declared once as --l-* / --d-* and then *resolved* into the
+ * semantic names below, so a colour is never written twice.
+ *
  * oklch keeps perceptual lightness consistent across hues, so the two palettes
- * feel like the same design rather than two different ones.
+ * read as one design rather than two.
  */
 :root {
-  --background: oklch(0.985 0.002 265);
-  --foreground: oklch(0.21 0.02 265);
+  --l-background: oklch(0.985 0.002 265);
+  --l-foreground: oklch(0.21 0.02 265);
+  --l-surface: oklch(1 0 0);
+  --l-surface-hover: oklch(0.965 0.004 265);
+  --l-border: oklch(0.91 0.005 265);
+  --l-ring: oklch(0.62 0.16 258);
+  --l-muted: oklch(0.55 0.015 265);
+  --l-accent: oklch(0.55 0.19 258);
+  --l-accent-foreground: oklch(0.99 0 0);
+  --l-shadow-card: 0 1px 2px 0 oklch(0.21 0.02 265 / 0.06);
+  --l-shadow-lifted: 0 14px 32px -8px oklch(0.21 0.02 265 / 0.3);
 
-  --surface: oklch(1 0 0);
-  --surface-hover: oklch(0.975 0.003 265);
+  --d-background: oklch(0.17 0.015 265);
+  --d-foreground: oklch(0.96 0.003 265);
+  --d-surface: oklch(0.22 0.018 265);
+  --d-surface-hover: oklch(0.27 0.02 265);
+  --d-border: oklch(0.32 0.02 265);
+  --d-ring: oklch(0.7 0.15 258);
+  --d-muted: oklch(0.72 0.015 265);
+  --d-accent: oklch(0.68 0.16 258);
+  --d-accent-foreground: oklch(0.17 0.015 265);
+  --d-shadow-card: 0 1px 2px 0 oklch(0 0 0 / 0.4);
+  --d-shadow-lifted: 0 14px 32px -8px oklch(0 0 0 / 0.6);
 
-  --border: oklch(0.91 0.005 265);
-  --ring: oklch(0.62 0.16 258);
+  --background: var(--l-background);
+  --foreground: var(--l-foreground);
+  --surface: var(--l-surface);
+  --surface-hover: var(--l-surface-hover);
+  --border: var(--l-border);
+  --ring: var(--l-ring);
+  --muted: var(--l-muted);
+  --accent: var(--l-accent);
+  --accent-foreground: var(--l-accent-foreground);
+  --shadow-card: var(--l-shadow-card);
+  --shadow-lifted: var(--l-shadow-lifted);
 
-  --muted: oklch(0.55 0.015 265);
-  --accent: oklch(0.55 0.19 258);
-  --accent-foreground: oklch(0.99 0 0);
-
-  --shadow-card: 0 1px 2px 0 oklch(0.21 0.02 265 / 0.05);
-  --shadow-lifted: 0 12px 28px -6px oklch(0.21 0.02 265 / 0.28);
+  color-scheme: light;
 }
 
+/*
+ * No stored preference: follow the OS.
+ *
+ * :not(.light):not(.dark) means an explicit choice always wins, which is why
+ * this can sit before .dark without a specificity fight. This block is the
+ * reason a dark-mode user with no cookie sees dark on the very first byte,
+ * with no blocking script and no flash.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not(.dark) {
+    --background: var(--d-background);
+    --foreground: var(--d-foreground);
+    --surface: var(--d-surface);
+    --surface-hover: var(--d-surface-hover);
+    --border: var(--d-border);
+    --ring: var(--d-ring);
+    --muted: var(--d-muted);
+    --accent: var(--d-accent);
+    --accent-foreground: var(--d-accent-foreground);
+    --shadow-card: var(--d-shadow-card);
+    --shadow-lifted: var(--d-shadow-lifted);
+
+    color-scheme: dark;
+  }
+}
+
+/* An explicit preference, written server-side from the cookie. */
 .dark {
-  --background: oklch(0.17 0.015 265);
-  --foreground: oklch(0.96 0.003 265);
+  --background: var(--d-background);
+  --foreground: var(--d-foreground);
+  --surface: var(--d-surface);
+  --surface-hover: var(--d-surface-hover);
+  --border: var(--d-border);
+  --ring: var(--d-ring);
+  --muted: var(--d-muted);
+  --accent: var(--d-accent);
+  --accent-foreground: var(--d-accent-foreground);
+  --shadow-card: var(--d-shadow-card);
+  --shadow-lifted: var(--d-shadow-lifted);
 
-  --surface: oklch(0.22 0.018 265);
-  --surface-hover: oklch(0.26 0.02 265);
-
-  --border: oklch(0.32 0.02 265);
-  --ring: oklch(0.7 0.15 258);
-
-  --muted: oklch(0.72 0.015 265);
-  --accent: oklch(0.68 0.16 258);
-  --accent-foreground: oklch(0.17 0.015 265);
-
-  --shadow-card: 0 1px 2px 0 oklch(0 0 0 / 0.4);
-  --shadow-lifted: 0 12px 28px -6px oklch(0 0 0 / 0.6);
+  color-scheme: dark;
 }
 
-/* `inline` so the utilities resolve to var() references rather than baking in
-   the light-mode values, which is what lets `.dark` override them. */
+/* `inline` so utilities compile to `var(--surface)` rather than baking in the
+   light-mode value, which is what lets the blocks above override them. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -70,20 +115,11 @@
 
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', monospace;
 }
 
 @layer base {
   * {
     border-color: var(--border);
-  }
-
-  html {
-    color-scheme: light;
-  }
-
-  html.dark {
-    color-scheme: dark;
   }
 
   body {
