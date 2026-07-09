@@ -1,1 +1,121 @@
 @import 'tailwindcss';
+
+/*
+ * Dark mode is driven by a class on <html>, not by prefers-color-scheme, because
+ * the class is written server-side from a cookie. The server therefore emits the
+ * correct theme in the first byte and there is no flash of the wrong one.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Semantic tokens, defined once.
+ *
+ * The alternative — sprinkling `dark:bg-gray-900` across every element — works
+ * and rots: each new component is a fresh chance to forget a variant, and
+ * nothing can check that you didn't. Here, dark mode is a property of the theme
+ * rather than of the component, so it cannot be forgotten. Components never
+ * mention a colour mode at all.
+ *
+ * oklch keeps perceptual lightness consistent across hues, so the two palettes
+ * feel like the same design rather than two different ones.
+ */
+:root {
+  --background: oklch(0.985 0.002 265);
+  --foreground: oklch(0.21 0.02 265);
+
+  --surface: oklch(1 0 0);
+  --surface-hover: oklch(0.975 0.003 265);
+
+  --border: oklch(0.91 0.005 265);
+  --ring: oklch(0.62 0.16 258);
+
+  --muted: oklch(0.55 0.015 265);
+  --accent: oklch(0.55 0.19 258);
+  --accent-foreground: oklch(0.99 0 0);
+
+  --shadow-card: 0 1px 2px 0 oklch(0.21 0.02 265 / 0.05);
+  --shadow-lifted: 0 12px 28px -6px oklch(0.21 0.02 265 / 0.28);
+}
+
+.dark {
+  --background: oklch(0.17 0.015 265);
+  --foreground: oklch(0.96 0.003 265);
+
+  --surface: oklch(0.22 0.018 265);
+  --surface-hover: oklch(0.26 0.02 265);
+
+  --border: oklch(0.32 0.02 265);
+  --ring: oklch(0.7 0.15 258);
+
+  --muted: oklch(0.72 0.015 265);
+  --accent: oklch(0.68 0.16 258);
+  --accent-foreground: oklch(0.17 0.015 265);
+
+  --shadow-card: 0 1px 2px 0 oklch(0 0 0 / 0.4);
+  --shadow-lifted: 0 12px 28px -6px oklch(0 0 0 / 0.6);
+}
+
+/* `inline` so the utilities resolve to var() references rather than baking in
+   the light-mode values, which is what lets `.dark` override them. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Keyboard users get a visible ring; pointer users do not. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/*
+ * Prices are tabular so digits do not jitter as they update every 30 seconds.
+ * Without this, "$63,213.17" -> "$63,199.02" visibly shifts the whole row.
+ */
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
