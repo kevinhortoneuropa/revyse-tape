@@ -1,0 +1,108 @@
+import js from '@eslint/js'
+import prettier from 'eslint-config-prettier'
+import jsxA11y from 'eslint-plugin-jsx-a11y'
+import react from 'eslint-plugin-react'
+import reactHooks from 'eslint-plugin-react-hooks'
+import globals from 'globals'
+import tseslint from 'typescript-eslint'
+
+export default tseslint.config(
+  { ignores: ['build/**', 'coverage/**', 'playwright-report/**', 'test-results/**', '.remix/**'] },
+
+  js.configs.recommended,
+  ...tseslint.configs.strictTypeChecked,
+  ...tseslint.configs.stylisticTypeChecked,
+
+  {
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+      globals: { ...globals.browser, ...globals.node },
+    },
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
+    rules: {
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
+      ],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      // Prices are branded numbers. A cast defeats the entire point of branding,
+      // so it must be a conscious, reviewable act.
+      '@typescript-eslint/consistent-type-assertions': [
+        'error',
+        { assertionStyle: 'as', objectLiteralTypeAssertions: 'never' },
+      ],
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
+    },
+  },
+
+  // React
+  {
+    files: ['app/**/*.{ts,tsx}'],
+    plugins: { react, 'react-hooks': reactHooks, 'jsx-a11y': jsxA11y },
+    settings: { react: { version: 'detect' } },
+    rules: {
+      ...react.configs.flat.recommended.rules,
+      ...react.configs.flat['jsx-runtime'].rules,
+      ...reactHooks.configs.recommended.rules,
+      ...jsxA11y.flatConfigs.recommended.rules,
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // Architectural boundary.
+  //
+  // `app/lib` is the pure core: money derivation, ordering, and the Coinbase
+  // client. It is unit-tested without a DOM, a network, or a renderer. That is
+  // only true for as long as nothing in it imports a framework — and importing
+  // `useState` into a formatting module always looks harmless in isolation.
+  //
+  // A convention a linter checks is an architecture. One in a README is a wish.
+  // ---------------------------------------------------------------------------
+  {
+    files: ['app/lib/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: 'react', message: 'app/lib must stay framework-free. Move this to a hook.' },
+            { name: 'react-dom', message: 'app/lib must stay framework-free.' },
+          ],
+          patterns: [
+            {
+              group: ['@remix-run/*', '~/components/*', '~/features/*', '~/hooks/*'],
+              message:
+                'app/lib must stay framework-free and must not depend on the UI layer. Dependencies point inward.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  // Test files: relax the strictest type rules; mocks legitimately lie.
+  {
+    files: ['**/*.test.{ts,tsx}', '**/test/**', 'e2e/**'],
+    rules: {
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/unbound-method': 'off',
+    },
+  },
+
+  // Plain-JS config files sit outside the app's TypeScript project, so the
+  // type-aware rules have nothing to read. Lint them syntactically instead.
+  {
+    files: ['**/*.js'],
+    extends: [tseslint.configs.disableTypeChecked],
+  },
+
+  prettier,
+)

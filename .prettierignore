@@ -1,0 +1,6 @@
+build/
+coverage/
+playwright-report/
+test-results/
+package-lock.json
+docs/brief.md
