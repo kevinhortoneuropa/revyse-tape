@@ -27,6 +27,9 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run test:coverage
+      # The only check that exercises Remix's route discovery: a colocated test
+      # file under app/routes typechecks, lints and tests clean, then fails here.
+      - run: npm run build
 
   audit:
     name: Production dependencies have no known vulnerabilities
@@ -55,8 +58,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Both projects (desktop Chrome, emulated Pixel 7) run on Chromium.
       - run: npx playwright install --with-deps chromium
-      - run: npm run build
+      # playwright.config.ts's webServer builds the app and boots a mock Coinbase:
+      # the loader fetches server-side, so page.route cannot intercept it.
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
