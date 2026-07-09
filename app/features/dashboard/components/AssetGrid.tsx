@@ -7,7 +7,6 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import { restrictToParentElement } from '@dnd-kit/modifiers'
 import {
   rectSortingStrategy,
   SortableContext,
@@ -98,7 +97,9 @@ export function AssetGrid({
       id="asset-grid"
       sensors={sensors}
       collisionDetection={closestCenter}
-      modifiers={[restrictToParentElement]}
+      // No `restrictToParentElement` modifier: it confines a dragged node to
+      // its *own* parent, and each card sits in its own <li>. It pins every
+      // drag in place while looking entirely reasonable in review.
       accessibility={{ announcements: dragAnnouncements, screenReaderInstructions }}
       onDragStart={onDragStart}
       onDragEnd={handleDragEnd}

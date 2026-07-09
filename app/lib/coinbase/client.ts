@@ -4,10 +4,15 @@ import type { QuotedAssets } from './quote'
 import { quoteAssets } from './quote'
 import { parseCatalog, parseRates } from './schemas'
 
-const BASE_URL = 'https://api.coinbase.com'
+/**
+ * Overridable so end-to-end tests can point at a mock upstream. The fetch
+ * happens in the loader, on the server, which is precisely why Playwright's own
+ * request interception cannot reach it.
+ */
+const BASE_URL = process.env['COINBASE_BASE_URL'] ?? 'https://api.coinbase.com'
 
 /** Coinbase's public endpoints allow ~10k requests/hour/IP. This stays far under. */
-const CACHE_TTL_MS = 10_000
+const CACHE_TTL_MS = Number(process.env['COINBASE_CACHE_TTL_MS'] ?? 10_000)
 
 /** A dashboard that hangs is worse than one that says the feed is down. */
 const REQUEST_TIMEOUT_MS = 5_000

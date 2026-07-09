@@ -109,11 +109,12 @@ export default tseslint.config(
     },
   },
 
-  // Plain-JS config files sit outside the app's TypeScript project, so the
-  // type-aware rules have nothing to read. Lint them syntactically instead.
+  // Plain-JS files sit outside the app's TypeScript project, so the type-aware
+  // rules have nothing to read. Lint them syntactically instead.
   {
-    files: ['**/*.js'],
+    files: ['**/*.js', '**/*.mjs'],
     extends: [tseslint.configs.disableTypeChecked],
+    languageOptions: { globals: { ...globals.node } },
   },
 
   prettier,
