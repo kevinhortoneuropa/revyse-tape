@@ -20,6 +20,15 @@ import stylesheet from './app.css?url'
 export const links: LinksFunction = () => [
   // The loader hits Coinbase on every request; warm the connection early.
   { rel: 'preconnect', href: 'https://api.coinbase.com' },
+
+  // The SVG is the primary icon: it stays sharp at any size and follows the OS
+  // colour scheme live, without a reload. The .ico is not redundant — crawlers,
+  // link unfurlers and Safari never read this list and go straight to the
+  // well-known /favicon.ico, which is what was 404ing into the Remix router.
+  { rel: 'icon', href: '/favicon.ico', sizes: '32x32' },
+  { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+  { rel: 'apple-touch-icon', href: '/apple-touch-icon.png', sizes: '180x180' },
+
   { rel: 'stylesheet', href: stylesheet },
 ]
 

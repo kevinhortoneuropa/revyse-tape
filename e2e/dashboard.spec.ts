@@ -49,6 +49,35 @@ test.describe('the dashboard', () => {
     expect((await cardOrder(page)).length).toBeGreaterThanOrEqual(10)
     await context.close()
   })
+
+  // Without a file in public/, /favicon.ico falls past the static layer into the
+  // Remix router, which throws "No route matches URL" and answers 404 with a
+  // rendered error document. Crawlers, unfurlers and Safari request this path
+  // regardless of any <link> tag, so the file has to exist.
+  const ICONS = [
+    ['/favicon.ico', /image\/(x-icon|vnd\.microsoft\.icon)/],
+    ['/favicon.svg', /image\/svg\+xml/],
+    ['/apple-touch-icon.png', /image\/png/],
+  ] as const
+
+  for (const [path, contentType] of ICONS) {
+    test(`serves ${path} as a static file, not through the router`, async ({ page }) => {
+      const response = await page.request.get(path)
+
+      expect(response.status()).toBe(200)
+      expect(response.headers()['content-type']).toMatch(contentType)
+      // A rendered error document would be HTML, and far larger than an icon.
+      expect((await response.body()).length).toBeGreaterThan(100)
+    })
+  }
+
+  test('declares the icon set in the document head', async ({ page }) => {
+    await page.goto('/')
+
+    await expect(page.locator('link[rel="icon"][href="/favicon.svg"]')).toHaveCount(1)
+    await expect(page.locator('link[rel="icon"][href="/favicon.ico"]')).toHaveCount(1)
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1)
+  })
 })
 
 test.describe('drag and drop', () => {

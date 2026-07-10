@@ -117,5 +117,11 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.node } },
   },
 
+  // One-shot CLI scripts exist to talk to the terminal.
+  {
+    files: ['scripts/**'],
+    rules: { 'no-console': 'off' },
+  },
+
   prettier,
 )

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <style>
+    :root { --bg: #156cdd; --fg: #fcfcfc; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #5598f9; --fg: #0c0f16; }
+    }
+  </style>
+  <rect width="24" height="24" rx="5" fill="var(--bg)"/>
+  <g stroke="var(--fg)" stroke-width="3.2" stroke-linecap="round" fill="none">
+    <path d="M6 4V20"/>
+    <path d="M6 4 A7.6 5 0 0 1 6 14"/>
+    <path d="M8.6 13.2L16.4 20"/>
+  </g>
+</svg>
