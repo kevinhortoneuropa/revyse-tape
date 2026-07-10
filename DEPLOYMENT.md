@@ -1,5 +1,7 @@
 # Deploying — the `deploy/cloudflare` overlay branch
 
+**Live: <https://revyse-tape.kevinhorton0921.workers.dev/>**
+
 `main` targets Node, depends on no vendor, and deploys nowhere. This branch is a
 thin overlay that runs the same app as a **Cloudflare Worker**, so there is a live
 demo without `main` carrying a `server.ts`, a `wrangler.jsonc`, or an opinion
@@ -156,8 +158,9 @@ All four confirmed against a real Cloudflare build log: it installed
 with no hook installation, and `npm run build` emitted `build/client` from a clean
 clone.
 
-The demo lands at `revyse-tape.<your-subdomain>.workers.dev`. Set the subdomain
-under Workers & Pages if the account has never had one.
+The demo lands at `revyse-tape.<your-subdomain>.workers.dev` — here,
+<https://revyse-tape.kevinhorton0921.workers.dev/>. Set the subdomain under
+Workers & Pages if the account has never had one.
 
 Free plan: 3,000 build minutes a month, one concurrent build, 20 minutes maximum
 per build. This build takes well under one.
@@ -175,3 +178,32 @@ The deployed app is `main`'s code. The runtime differs; the application does not
 `app/lib`, every component, every hook and all 69 end-to-end specs are identical,
 and the suite runs against **workerd**, the runtime we deploy to — so the demo is
 tested more strictly than `main` is, not less.
+
+## What was verified against the live origin
+
+A green check run means Cloudflare's build exited zero. It does not mean the app
+works. These were checked against the deployed URL, in WebKit and Chromium:
+
+- **Server rendering.** Twelve cards, with prices, are in the HTML before any
+  JavaScript executes — `javaScriptEnabled: false` renders the same twelve.
+- **Progressive enhancement.** With JavaScript disabled the theme toggle still
+  works: the `<Form>` POSTs, the server responds `302` with `Set-Cookie`, and the
+  next document arrives as `<html lang="en" class="light">`.
+- **`Secure` is derived from transport, not `NODE_ENV`.** Over real HTTPS the
+  cookie carries `Secure`; over `http://localhost` it correctly does not, which is
+  what stopped Safari silently dropping it. This is the first time
+  `isSecureRequest()` has run on genuine HTTPS, and it behaves as designed.
+- **Shareable URLs survive the edge.** `?q=bitcoin` server-renders `BTC, BCH`;
+  `?q=zzzz` renders the empty state; a 10,000-character query returns `200`; and
+  `?q=<script>alert(1)</script>` appears zero times unescaped.
+- **Assets bypass the Worker.** `/favicon.ico`, `/favicon.svg` and
+  `/apple-touch-icon.png` are served by the assets layer with the right content
+  types — the original `No route matches URL "/favicon.ico"` is gone.
+- **Keyboard drag-and-drop.** `Space`, `ArrowRight`, `Space` reorders `BTC, ETH`
+  to `ETH, BTC`, announces `BTC is over ETH.`, and survives a reload.
+
+And one thing it disproved. Two requests **two seconds apart**, well inside the
+ten-second TTL, returned different `fetchedAt` values: they were served by
+different isolates. The per-isolate cache boundary in
+[ADR-0007](./docs/adr/0007-server-render-on-cloudflare-workers.md) is not
+theoretical, and `caches.default` is the fix if upstream load ever matters.
