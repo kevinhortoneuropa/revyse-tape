@@ -7,7 +7,20 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['build/**', 'coverage/**', 'playwright-report/**', 'test-results/**', '.remix/**'] },
+  {
+    // ESLint walks the filesystem, not the git index, so every generated
+    // directory .gitignore knows about has to be named here too. Miss one and a
+    // stray build artefact produces thousands of errors in vendored code.
+    ignores: [
+      'build/**',
+      'coverage/**',
+      'playwright-report/**',
+      'blob-report/**',
+      'test-results/**',
+      '.remix/**',
+      '.wrangler/**',
+    ],
+  },
 
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,

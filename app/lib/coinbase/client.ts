@@ -8,20 +8,24 @@ import { parseCatalog, parseRates } from './schemas'
  * Overridable so end-to-end tests can point at a mock upstream. The fetch
  * happens in the loader, on the server, which is precisely why Playwright's own
  * request interception cannot reach it.
+ *
+ * Configuration arrives as a constructor option rather than being read from the
+ * environment. `app/lib` is the pure core and must not know where it runs — and
+ * `process.env` at module scope is not universally available anyway.
  */
-const BASE_URL = process.env['COINBASE_BASE_URL'] ?? 'https://api.coinbase.com'
+const DEFAULT_BASE_URL = 'https://api.coinbase.com'
 
 /** Coinbase's public endpoints allow ~10k requests/hour/IP. This stays far under. */
-const CACHE_TTL_MS = Number(process.env['COINBASE_CACHE_TTL_MS'] ?? 10_000)
+const DEFAULT_CACHE_TTL_MS = 10_000
 
 /** A dashboard that hangs is worse than one that says the feed is down. */
 const REQUEST_TIMEOUT_MS = 5_000
 
-async function fetchJson(path: string, timeoutMs: number): Promise<unknown> {
+async function fetchJson(baseUrl: string, path: string, timeoutMs: number): Promise<unknown> {
   let response: Response
 
   try {
-    response = await fetch(`${BASE_URL}${path}`, {
+    response = await fetch(`${baseUrl}${path}`, {
       signal: AbortSignal.timeout(timeoutMs),
       headers: { accept: 'application/json' },
     })
@@ -53,10 +57,14 @@ export interface DashboardData extends QuotedAssets {
  * logos, market caps and 24h changes, but it is undocumented and unversioned,
  * and a submission's core data path should not rest on it.
  */
-async function loadDashboardData(now: () => number, timeoutMs: number): Promise<DashboardData> {
+async function loadDashboardData(
+  baseUrl: string,
+  now: () => number,
+  timeoutMs: number,
+): Promise<DashboardData> {
   const [catalogPayload, ratesPayload] = await Promise.all([
-    fetchJson('/v2/currencies/crypto', timeoutMs),
-    fetchJson('/v2/exchange-rates?currency=USD', timeoutMs),
+    fetchJson(baseUrl, '/v2/currencies/crypto', timeoutMs),
+    fetchJson(baseUrl, '/v2/exchange-rates?currency=USD', timeoutMs),
   ])
 
   const catalog = parseCatalog(catalogPayload)
@@ -81,6 +89,8 @@ export interface CoinbaseClient {
 }
 
 export interface CoinbaseClientOptions {
+  /** Points at a mock upstream in the end-to-end suite. */
+  readonly baseUrl?: string
   readonly ttlMs?: number
   readonly timeoutMs?: number
   /** Injected so tests control time instead of sleeping. */
@@ -89,10 +99,11 @@ export interface CoinbaseClientOptions {
 
 export function createCoinbaseClient(options: CoinbaseClientOptions = {}): CoinbaseClient {
   const now = options.now ?? Date.now
+  const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL
   const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS
 
-  const cache = createTtlCache(() => loadDashboardData(now, timeoutMs), {
-    ttlMs: options.ttlMs ?? CACHE_TTL_MS,
+  const cache = createTtlCache(() => loadDashboardData(baseUrl, now, timeoutMs), {
+    ttlMs: options.ttlMs ?? DEFAULT_CACHE_TTL_MS,
     now,
   })
 
