@@ -53,12 +53,24 @@ describe('AssetCard', () => {
     expect(screen.queryByText('$0.00')).not.toBeInTheDocument()
   })
 
-  it('paints the monogram in the asset brand colour', () => {
-    render(<AssetCard asset={asset()} />)
-    const monogram = screen.getByText('BTC', { selector: 'span' })
+  it('renders the token icon for a tracked symbol', () => {
+    const { container } = render(<AssetCard asset={asset()} />)
+    const icon = container.querySelector('svg[data-token-icon="BTC"]')
 
-    expect(monogram).toHaveStyle({ backgroundColor: '#F7931A' })
+    expect(icon).toBeInTheDocument()
     // Decorative: the symbol is already announced by the heading beside it.
+    expect(icon).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('falls back to a brand-coloured monogram for an unknown symbol', () => {
+    render(
+      <AssetCard
+        asset={asset({ symbol: 'ZZZ' as CurrencySymbol, name: 'Zed', color: '#123456' })}
+      />,
+    )
+    const monogram = screen.getByText('ZZZ', { selector: 'span' })
+
+    expect(monogram).toHaveStyle({ backgroundColor: '#123456' })
     expect(monogram).toHaveAttribute('aria-hidden', 'true')
   })
 

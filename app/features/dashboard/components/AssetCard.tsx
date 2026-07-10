@@ -3,28 +3,11 @@ import { cn } from '~/components/ui/cn'
 import type { QuotedAsset } from '~/lib/domain'
 import { formatBtc, formatUsd } from '~/lib/money/format'
 
+import { TokenIcon } from './TokenIcon'
+
 export interface AssetCardProps {
   readonly asset: QuotedAsset
   readonly className?: string
-}
-
-/**
- * A brand-coloured monogram rather than a logo.
- *
- * Coinbase's documented catalog gives us `color`; the logo lives only on an
- * undocumented endpoint. A monogram costs no image request, cannot 404, and
- * causes no layout shift.
- */
-function Monogram({ symbol, color }: { readonly symbol: string; readonly color: string }) {
-  return (
-    <span
-      aria-hidden
-      className="grid size-9 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
-      style={{ backgroundColor: color }}
-    >
-      {symbol.slice(0, 3)}
-    </span>
-  )
 }
 
 export function AssetCard({ asset, className }: AssetCardProps) {
@@ -34,7 +17,7 @@ export function AssetCard({ asset, className }: AssetCardProps) {
       className={cn('flex flex-col gap-3 transition-shadow', className)}
     >
       <div className="flex items-center gap-3">
-        <Monogram symbol={asset.symbol} color={asset.color} />
+        <TokenIcon symbol={asset.symbol} color={asset.color} />
         <div className="min-w-0">
           {/* truncate: "Bitcoin Cash" must not wrap the card at 320px. */}
           <p className="truncate font-medium leading-tight">{asset.name}</p>

@@ -7,7 +7,7 @@ export type CurrencySymbol = Brand<string, 'CurrencySymbol'>
 export interface Asset {
   readonly symbol: CurrencySymbol
   readonly name: string
-  /** Coinbase's brand colour, used for the card monogram. */
+  /** Coinbase's brand colour, used by the card icon's monogram fallback. */
   readonly color: string
 }
 
