@@ -1,4 +1,4 @@
-import type { HeadersFunction, MetaFunction } from '@remix-run/node'
+import type { HeadersFunction, LoaderFunctionArgs, MetaFunction } from '@remix-run/node'
 import type { ShouldRevalidateFunction } from '@remix-run/react'
 import {
   isRouteErrorResponse,
@@ -10,13 +10,14 @@ import {
 import { useCallback, useMemo, useState } from 'react'
 
 import { Button } from '~/components/ui/Button'
+import { readEnv } from '~/env.server'
 import { AssetGrid } from '~/features/dashboard/components/AssetGrid'
 import { EmptyState } from '~/features/dashboard/components/EmptyState'
 import { FilterInput } from '~/features/dashboard/components/FilterInput'
 import { RefreshControl } from '~/features/dashboard/components/RefreshControl'
 import { useAutoRefresh } from '~/features/dashboard/hooks/useAutoRefresh'
 import { useOrdering } from '~/features/dashboard/hooks/useOrdering'
-import { coinbase } from '~/features/dashboard/coinbase.server'
+import { getCoinbaseClient } from '~/features/dashboard/coinbase.server'
 import { ThemeToggle } from '~/features/theme/ThemeToggle'
 import { CoinbaseDataError, CoinbaseUnavailableError } from '~/lib/coinbase/errors'
 import { filterAssets } from '~/lib/filter/match'
@@ -36,7 +37,11 @@ export const headers: HeadersFunction = () => ({
   'Cache-Control': 'public, max-age=0, s-maxage=10, stale-while-revalidate=30',
 })
 
-export async function loader() {
+export async function loader({ context }: LoaderFunctionArgs) {
+  // `app/lib` never reads the environment. The loader reads it once, here, and
+  // passes it inward. Which is also the seam a different runtime slots into.
+  const coinbase = getCoinbaseClient(readEnv(context))
+
   try {
     const { assets, fetchedAt } = await coinbase.getDashboardData()
     return { assets, fetchedAt }

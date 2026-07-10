@@ -5,13 +5,18 @@ import { CoinbaseDataError, CoinbaseUnavailableError } from '~/lib/coinbase/erro
 const getDashboardData = vi.fn()
 
 vi.mock('~/features/dashboard/coinbase.server', () => ({
-  coinbase: {
+  getCoinbaseClient: () => ({
     getDashboardData: () => getDashboardData() as unknown,
     invalidate: vi.fn(),
-  },
+  }),
 }))
 
 const { headers, loader, shouldRevalidate } = await import('./_index')
+
+type LoaderArgs = Parameters<typeof loader>[0]
+
+/** remix-serve passes an empty load context; readEnv falls back to process.env. */
+const loaderArgs = { context: {} } as LoaderArgs
 
 type RevalidateArgs = Parameters<typeof shouldRevalidate>[0]
 
@@ -39,7 +44,10 @@ describe('dashboard loader', () => {
       fetchedAt: 1234,
     })
 
-    await expect(loader()).resolves.toEqual({ assets: [{ symbol: 'BTC' }], fetchedAt: 1234 })
+    await expect(loader(loaderArgs)).resolves.toEqual({
+      assets: [{ symbol: 'BTC' }],
+      fetchedAt: 1234,
+    })
   })
 
   // Both are expected failure modes, not bugs. The ErrorBoundary renders a 503
@@ -50,7 +58,7 @@ describe('dashboard loader', () => {
   ])('turns %s into a 503 response', async (_label, error) => {
     getDashboardData.mockRejectedValue(error)
 
-    const thrown: unknown = await loader().catch((e: unknown) => e)
+    const thrown: unknown = await loader(loaderArgs).catch((e: unknown) => e)
 
     expect(thrown).toBeInstanceOf(Response)
     expect((thrown as Response).status).toBe(503)
@@ -60,7 +68,7 @@ describe('dashboard loader', () => {
   // A genuine bug must not be disguised as a friendly outage message.
   it('lets an unexpected error bubble as a real failure', async () => {
     getDashboardData.mockRejectedValue(new TypeError('undefined is not a function'))
-    await expect(loader()).rejects.toThrow(TypeError)
+    await expect(loader(loaderArgs)).rejects.toThrow(TypeError)
   })
 })
 
