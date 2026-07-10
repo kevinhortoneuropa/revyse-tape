@@ -25,6 +25,11 @@ export default defineConfig({
     // The brief asks for a responsive layout, and drag-and-drop on touch is the
     // requirement native HTML5 DnD would have silently failed.
     { name: 'mobile', use: { ...devices['Pixel 7'] } },
+    // Not decoration. WebKit is the only engine that rejects a `Secure` cookie
+    // set over http://localhost, and adding this project immediately failed
+    // three theme tests that had always passed in Chromium. It also exposed a
+    // filter/re-render race the other engines happened to win.
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
 
   webServer: [

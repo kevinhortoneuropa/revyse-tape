@@ -166,9 +166,9 @@ rather than by hope. It was verified by planting a violation.
 
 ## Testing
 
-283 unit tests, 38 end-to-end (19 × desktop Chrome and an emulated Pixel 7).
-`app/lib` is held at **100%** statements, branches, functions and lines; the gate
-has caught three genuinely untested paths.
+299 unit tests, 57 end-to-end (19 × desktop Chrome, an emulated Pixel 7, and
+WebKit). `app/lib` is held at **100%** statements, branches, functions and lines;
+the gate has caught three genuinely untested paths.
 
 - **Unit** — Vitest. The pure core (`derive`, `format`, `reorder`, `reconcile`,
   schemas) exhaustively, including `rate = "0"`, denormal rates whose reciprocal
@@ -190,6 +190,32 @@ Playwright covers the real pointer, touch, and keyboard interactions.
 
 `page.dragAndDrop()` does not work with dnd-kit either — see `e2e/helpers.ts` for
 why, and for the helper that does.
+
+### How the WebKit project earned its place
+
+It was added because of a question that had nothing to do with browsers.
+
+Auditing the code for a possible move to Cloudflare Workers turned up
+`secure: process.env.NODE_ENV === 'production'` on the theme cookie — Remix's own
+stacks ship exactly that line. On Workers there is no `process.env` at module
+scope, so it would evaluate `false` and the cookie would quietly lose its `Secure`
+attribute in production. Nothing would fail. It would just be wrong.
+
+The obvious fix, `secure: true`, turned out to be wrong too: **Safari refuses to
+return a `Secure` cookie set over `http://localhost`.** And since `remix-serve`
+sets `NODE_ENV=production`, this repository had _already_ been serving one — so
+**dark mode was broken in Safari, and had been all along.** A Chromium-only suite
+could not see it.
+
+Adding `{ name: 'webkit' }` failed three theme tests on the very first run. The fix
+is `isSecureRequest(request)`: derive `Secure` from the transport (HTTPS URL, or
+`X-Forwarded-Proto` from a TLS-terminating proxy), never from an environment
+variable. The header is spoofable and trusted anyway, because it can only _add_
+`Secure` — a forged value breaks nobody's session but the forger's.
+
+WebKit then found a second bug: the filter tests asserted on the URL and read the
+DOM, but `setSearchParams` changes the address bar before React commits the grid.
+Chromium won that race; WebKit didn't. The tests now wait on the card count.
 
 ---
 

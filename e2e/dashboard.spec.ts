@@ -4,8 +4,12 @@ import {
   card,
   cardOrder,
   dragCard,
+  clearFilter,
   dragCardWithKeyboard,
+  expectCardCount,
+  expectCardCountNot,
   nextCardKey,
+  setFilter,
   themeClass,
   waitForHydration,
 } from './helpers'
@@ -104,9 +108,10 @@ test.describe('drag and drop', () => {
     await waitForHydration(page)
     const unfiltered = await cardOrder(page)
 
-    await page.getByRole('searchbox').fill('coin')
-    // The filter re-renders the grid; reading the DOM before then races it.
-    await expect(page).toHaveURL(/\?q=coin/)
+    await setFilter(page, 'coin')
+    // Wait for the grid, not the URL: setSearchParams changes the address bar
+    // before React commits the re-render.
+    await expectCardCountNot(page, unfiltered.length)
 
     const visible = await cardOrder(page)
     expect(visible.length).toBeGreaterThan(1)
@@ -114,8 +119,8 @@ test.describe('drag and drop', () => {
 
     await dragCard(page, visible[1]!, visible[0]!)
 
-    await page.getByRole('searchbox').clear()
-    await expect(page).not.toHaveURL(/q=/)
+    await clearFilter(page)
+    await expectCardCount(page, unfiltered.length)
     const restored = await cardOrder(page)
 
     // Every hidden card kept its relative position.
@@ -128,9 +133,10 @@ test.describe('drag and drop', () => {
 test.describe('filtering', () => {
   test('narrows the list and puts the query in the URL', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('searchbox').fill('eth')
+    await setFilter(page, 'eth')
 
     await expect(page).toHaveURL(/\?q=eth/)
+    await expectCardCount(page, 1)
     expect(await cardOrder(page)).toEqual(['ETH'])
   })
 
@@ -152,7 +158,7 @@ test.describe('filtering', () => {
 
   test('clearing the filter removes it from the URL', async ({ page }) => {
     await page.goto('/?q=eth')
-    await page.getByRole('searchbox').clear()
+    await clearFilter(page)
 
     await expect(page).not.toHaveURL(/q=/)
   })

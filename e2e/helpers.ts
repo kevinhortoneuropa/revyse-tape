@@ -44,6 +44,45 @@ export async function cardOrder(page: Page): Promise<string[]> {
 }
 
 /**
+ * Wait until the grid has actually re-rendered to `count` cards.
+ *
+ * `setSearchParams` updates the URL *before* React commits the new grid, so
+ * asserting on the URL and then reading the DOM is a race. Chromium usually
+ * wins it; WebKit does not. Wait on the thing under test, never on a proxy for it.
+ */
+export async function expectCardCount(page: Page, count: number): Promise<void> {
+  await expect(page.locator('[data-symbol]')).toHaveCount(count)
+}
+
+/** Wait until the grid has re-rendered to anything other than `count` cards. */
+export async function expectCardCountNot(page: Page, count: number): Promise<void> {
+  await expect(page.locator('[data-symbol]')).not.toHaveCount(count)
+}
+
+/**
+ * Type into the filter box, retrying until the value sticks.
+ *
+ * For a few hundred milliseconds after a dnd-kit drop, WebKit silently swallows
+ * a single-shot `fill()`: the drop settles, React re-renders, and the controlled
+ * input's value is restored from the URL — which has not changed yet, because
+ * the change event never landed. Chromium wins this race; WebKit does not.
+ *
+ * `toPass()` retries the fill until the DOM agrees, which converges immediately
+ * in Chromium and after the drop settles in WebKit. A `waitForTimeout(300)`
+ * would also "work", and would be a magic number hiding a race.
+ */
+export async function setFilter(page: Page, value: string): Promise<void> {
+  const input = page.getByRole('searchbox')
+
+  await expect(async () => {
+    await input.fill(value)
+    expect(await input.inputValue()).toBe(value)
+  }).toPass({ timeout: 5_000 })
+}
+
+export const clearFilter = (page: Page) => setFilter(page, '')
+
+/**
  * Drag one card onto another.
  *
  * `page.dragAndDrop()` does not work with dnd-kit, and this is the single most

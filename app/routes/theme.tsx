@@ -21,7 +21,8 @@ export async function action({ request }: ActionFunctionArgs) {
   const preference = parseThemePreference(form.get('theme'))
   const returnTo = safeRedirectPath(form.get('returnTo'))
 
-  const headers = { 'Set-Cookie': await serializeThemePreference(preference) }
+  // Secure is decided from this request's transport, never from NODE_ENV.
+  const headers = { 'Set-Cookie': await serializeThemePreference(preference, request) }
 
   // Remix appends `?_data=` to client-side submissions. Redirecting a fetcher
   // would make it navigate; an empty 204 lets the root loader revalidate in

@@ -109,6 +109,30 @@ Add a semantic token to `app.css` instead. Colours are declared once as `--l-*` 
 nothing about colour mode. A `dark:` variant is a colour mode leaking into a
 component, and the next component will forget it.
 
+### A cookie's `Secure` flag comes from the request, never from `NODE_ENV`
+
+`secure: process.env.NODE_ENV === 'production'` — the Remix stacks' own idiom — is
+wrong in both directions, and this repository shipped the bug.
+
+`remix-serve` sets `NODE_ENV=production`, so a `Secure` cookie went out over plain
+`http://localhost`. **Safari refuses to return a `Secure` cookie set over
+`http://localhost`** (WebKit's `CookieJar.cpp` gates it on `protocolIs("https")`;
+the loopback carve-out only reached Safari Technology Preview 242 in April 2026
+and WebKit bug 232088 is still open). Dark mode was therefore broken in Safari and
+in no other browser. It also _omits_ `Secure` on any HTTPS deployment whose
+`NODE_ENV` is not exactly `production`, silently downgrading a real cookie.
+
+Use `isSecureRequest(request)`: HTTPS URL, or `X-Forwarded-Proto: https` from a
+TLS-terminating proxy. That header is client-spoofable and trusted anyway, because
+it can only ever _add_ `Secure`, never remove it — a forged value breaks only the
+forger's own session.
+
+It also reads no environment at all, which is what makes the module portable to a
+runtime with no `process`.
+
+→ **Enforced:** the `webkit` Playwright project. It failed three theme tests the
+moment it was added.
+
 ### Pin the locale on every `Intl` formatter
 
 Unset, `Intl.NumberFormat` resolves to the **server's** locale during SSR and the
@@ -155,8 +179,16 @@ regression. See [ADR-0004](./docs/adr/0004-no-state-management-library.md).
   real interaction.
 - **Do not use `page.dragAndDrop()`.** Use `dragCard()` from `e2e/helpers.ts`,
   which crosses dnd-kit's activation constraint and moves in steps.
+- **Run the e2e suite on WebKit.** Chromium and WebKit disagree about `Secure`
+  cookies on localhost, about how quickly a controlled input accepts a
+  programmatic `fill()` after a drag, and about which races you win by luck.
 - **Never `waitForTimeout`.** Wait on a real signal: `aria-pressed`, a live-region
-  announcement, or a change in the persisted ordering.
+  announcement, or a change in the persisted ordering. Where no signal exists —
+  WebKit swallows a single-shot `fill()` for a few hundred ms after a dnd-kit drop
+  — retry the action with `expect(...).toPass()` rather than sleeping a magic number.
+- **Wait on the thing under test, not a proxy for it.** `setSearchParams` changes
+  the URL _before_ React commits the grid, so asserting on the URL and then reading
+  the DOM is a race. Assert on the card count.
 - MSW covers the Coinbase client at the network layer. Playwright uses a mock
   upstream (`e2e/mock-coinbase.mjs`) because the fetch happens in the loader, on
   the server, where `page.route` cannot reach it.

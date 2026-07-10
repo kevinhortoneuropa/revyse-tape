@@ -58,8 +58,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # Both projects (desktop Chrome, emulated Pixel 7) run on Chromium.
-      - run: npx playwright install --with-deps chromium
+      # Chromium covers desktop Chrome and the emulated Pixel 7. WebKit is not
+      # optional: it is the only engine that refuses a `Secure` cookie over
+      # http://localhost, which is how the theme cookie's transport bug was found.
+      - run: npx playwright install --with-deps chromium webkit
       # playwright.config.ts's webServer builds the app and boots a mock Coinbase:
       # the loader fetches server-side, so page.route cannot intercept it.
       - run: npm run test:e2e
