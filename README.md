@@ -274,43 +274,38 @@ docs/adr/                     architecture decision records
 
 ---
 
+## Deployment
+
+`main` targets Node (`remix-serve`), depends on no hosting vendor, and deploys
+nowhere. It has no `server.ts`, no `wrangler.jsonc`, and no opinion about anyone's
+infrastructure.
+
+The live demo runs from **`deploy/cloudflare`**, a thin overlay branch that swaps
+the runtime and nothing else. `git diff main..deploy/cloudflare -- app/lib e2e/`
+is **empty**: the deployed application is this one, and its end-to-end suite runs
+against **workerd**, the runtime it deploys to — so the demo is tested more
+strictly than `main` is, not less.
+
+Everything portable was landed here rather than there: `app/lib` takes its
+configuration as constructor options instead of reading `process.env` at module
+scope, and `readEnv(context)` in `app/env.server.ts` is the single seam a
+different runtime replaces. The overlay is `server.ts`, `wrangler.jsonc`,
+`load-context.ts`, two replaced files, and a handful of config lines.
+
+See [ADR-0006](./docs/adr/0006-deployment-lives-on-an-overlay-branch.md) for why
+deployment lives on a branch, and `DEPLOYMENT.md` on that branch for how to run
+and sync it.
+
+---
+
 ## What I would do next
 
-### Deploy to Cloudflare Workers
-
-The app targets Node (`remix-serve`). Moving it to the edge is about 150 lines,
-and the audit is already done:
-
-| Blocker                                      | Why                                                                                                                                                                                                                                               |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `entry.server.tsx`                           | `renderToPipeableStream` + `node:stream` → `renderToReadableStream`. `nodejs_compat` does **not** help: workerd resolves `react-dom/server` to the edge build, which does not export the Node API. A package-exports problem, not a Node-API one. |
-| `process.env` at module scope in `client.ts` | Undefined on Workers; `env` only exists per request. Becomes a constructor option, fed from `context.cloudflare.env`.                                                                                                                             |
-| `@remix-run/node` in four files              | → `@remix-run/cloudflare`.                                                                                                                                                                                                                        |
-| The `globalThis` TTL cache                   | Per-_isolate_ on Workers, so the hit rate collapses. `caches.default` is the right primitive — per-colo, GET-only, and it refuses to cache anything carrying `Set-Cookie`. Amends ADR-0003.                                                       |
-| Playwright boots `remix-serve`               | Would boot `wrangler dev` (workerd) instead.                                                                                                                                                                                                      |
-
-Nothing in `app/lib` moves except two lines, no component changes, and all 57 e2e
-specs stay byte-identical.
-
-Two things to know before starting. **The obvious `wrangler.jsonc` cannot run
-SSR**: with no `main` entrypoint, no server code executes at all, and
-`not_found_handling: "single-page-application"` serves `index.html` with a 200 for
-every unmatched route. That config deploys a static SPA — which, since Coinbase
-sends `access-control-allow-origin: *`, would genuinely _work_, and would delete
-SSR, the cookie theme, the `/theme` action, the server cache and three ADRs along
-with it. Second, `@remix-run/dev@2.17.5` peer-depends on `wrangler: ^3.28.2` while
-wrangler is at 4.x, and npm tags 3.114.17 as `legacy`.
-
-Deferred because this repository's value is a green pipeline and an intact
-architecture, not a demo URL. The one bug the audit _did_ turn up — the theme
-cookie's `Secure` flag — was fixed immediately rather than deferred with it.
-
-### Everything else
-
+- **`caches.default` instead of the per-isolate TTL cache** on the overlay branch.
+  Workers isolates are numerous and short-lived, so the in-memory cache bounds
+  upstream load per isolate rather than globally. The Cache API is per-colo and
+  survives isolate churn — but it is GET-only, refuses anything carrying
+  `Set-Cookie`, and needs an abstraction to keep `app/lib` testable under Node.
 - **Virtualise the grid** if the tracked list grew past ~100 cards.
-- **A shared cache (Redis, or `caches.default` on Workers)** if this ran on more
-  than one instance — which reopens ADR-0003, since `no-store` is aimed at
-  _shared_ caches.
 - **Server-persisted ordering** if the app ever gained accounts. That would give
   the authentication bonus an actual purpose, and change who owns Ordering.
 - **Visual regression tests.** The token layer makes dark mode structurally hard
