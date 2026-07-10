@@ -84,20 +84,53 @@ merge down. The overlay should only ever grow if Cloudflare itself demands it.
 No credential ever enters this repository. Cloudflare's GitHub App reads it, builds
 this branch, and deploys. Install the App scoped to **only this repository**.
 
+### The trap: the production branch is captured before you can set it
+
+**There is no branch selector anywhere in the create wizard.** "Advanced settings"
+holds exactly four things — non-production branch deploy command, `Path` (the root
+directory), API token, and build variables. Nothing else.
+
+Cloudflare takes the production branch from the repository's **default branch**, at
+the moment you _select the repository_ — not when you press Deploy. So it builds
+`main`, which has no `wrangler.jsonc`.
+
+Worse, that does not fail cleanly. `npx wrangler deploy` finds no config,
+auto-detects `Framework: Static`, prompts **"Proceed with setup?"**, answers itself
+`🤖 Using fallback value in non-interactive context: yes`, and tries to install
+wrangler as a devDependency. The build then dies with an **`ERESOLVE` about
+`peerOptional wrangler@^3.28.2`** — an error with nothing to do with the real cause.
+
+> If you ever see that ERESOLVE in a Cloudflare build log, the cause is not the
+> peer range. It means Cloudflare built a branch that has no `wrangler.jsonc`,
+> which almost certainly means it built `main`.
+
 ### One-time setup
 
-1. **Workers & Pages → Create application → Import a repository.** The flow
-   creates the Worker; it does not need to exist first.
-2. **The Worker must be named `revyse-tape`** — Workers Builds fails the build
-   unless the dashboard name matches `name` in `wrangler.jsonc`.
-3. **Settings → Build → Branch control → production branch: `deploy/cloudflare`.**
-   It defaults to the repository's default branch, which is `main`.
-4. **Turn OFF "Builds for non-production branches."** This one matters. `main` has
-   no `wrangler.jsonc`, so a build triggered by a push to `main` fails and paints
-   the repo red. Left on, every commit to `main` produces a failed Cloudflare build
-   for a Worker that `main` never claimed to be.
+1. **Set the repository's default branch to `deploy/cloudflare` first**, before you
+   open the wizard. Restore it to `main` afterwards.
+
+   ```bash
+   gh repo edit --default-branch deploy/cloudflare   # before
+   gh repo edit --default-branch main                # after
+   ```
+
+   Changing it mid-wizard is too late — the branch is already captured.
+
+2. **Workers & Pages → Create application → Import a repository.** The flow creates
+   the Worker; it does not need to exist first.
+3. **The Worker must be named `revyse-tape`** — the build fails unless the
+   dashboard name matches `name` in `wrangler.jsonc`.
+4. **Turn OFF "Builds for non-production branches."** Once `deploy/cloudflare` is
+   production, `main` is _non-production_. Left on, every push to `main` runs
+   `npx wrangler versions upload`, fails exactly as above, and posts the failure to
+   GitHub as a check run on the commit.
 5. **Build command: `npm run build`.** Deploy command: leave the default,
-   `npx wrangler deploy`. Root directory: repository root.
+   `npx wrangler deploy`. `Path`: `/`. API token: create automatically.
+
+If you already ran the wizard against `main`, recover with
+**Settings → Build → Branch control → production branch: `deploy/cloudflare`**, then
+push a commit to that branch to trigger a build. A _Retry build_ re-runs the same
+commit, which is the wrong one.
 
 Nothing else. No build variables, no secrets, no runtime `vars` — the app needs no
 API key, and `COINBASE_BASE_URL` / `COINBASE_CACHE_TTL_MS` exist only so the
@@ -117,6 +150,11 @@ end-to-end suite can point at a mock upstream.
   the build command, _then_ deploys, so the assets exist by the time
   `wrangler deploy` reads `assets.directory`. If the build command is ever blank,
   the deploy fails for a confusing reason: the directory does not exist.
+
+All four confirmed against a real Cloudflare build log: it installed
+`nodejs 22.23.1` from `.node-version`, ran `prepare` → `node .husky/install.mjs`
+with no hook installation, and `npm run build` emitted `build/client` from a clean
+clone.
 
 The demo lands at `revyse-tape.<your-subdomain>.workers.dev`. Set the subdomain
 under Workers & Pages if the account has never had one.
