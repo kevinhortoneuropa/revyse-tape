@@ -1,11 +1,21 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+
+  // Cloudflare Workers Builds fails the build unless the Worker created in the
+  // dashboard carries exactly this name.
   "name": "revyse-tape",
 
   // Without `main` there is no Worker at all: the deployment becomes
   // assets-only, no server code runs, and Remix never renders.
   "main": "./server.ts",
   "compatibility_date": "2025-10-31",
+
+  // The default, stated because it is what produces the demo's hostname:
+  // revyse-tape.<account-subdomain>.workers.dev
+  "workers_dev": true,
+
+  // No `build.command` on purpose. `wrangler deploy` would run it, and Workers
+  // Builds already runs its own build command first — you would build twice.
 
   "assets": {
     "directory": "./build/client",

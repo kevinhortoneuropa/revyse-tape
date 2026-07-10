@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'deploy/**']
   pull_request:
 
 concurrency:
@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version-file: .node-version
           cache: npm
       - run: npm ci
       - run: npm run typecheck
@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version-file: .node-version
           cache: npm
       - run: npm ci
       # Remix v2 is End of Life (see docs/adr/0001). Its build toolchain carries
@@ -55,7 +55,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version-file: .node-version
           cache: npm
       - run: npm ci
       # Chromium covers desktop Chrome and the emulated Pixel 7. WebKit is not

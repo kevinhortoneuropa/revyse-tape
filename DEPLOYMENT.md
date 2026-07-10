@@ -63,9 +63,14 @@ git merge main
 npm ci && npm run verify && npm run test:e2e
 ```
 
-`package-lock.json` is the only file that reliably conflicts, because both
-branches regenerate it. Resolve it by taking the branch's lockfile and rerunning
-`npm install`, never by hand-merging JSON:
+Two files conflict, and only two:
+
+**`package.json`** — both branches edit the `scripts` block, and git cannot know
+that `deploy` is ours while `prepare` is theirs. Resolve by hand; it is always
+three lines. (The first `main` → overlay merge conflicted here, and nowhere else.)
+
+**`package-lock.json`** — when `main` changes a dependency. Never hand-merge
+JSON. Take the branch's lockfile and let npm reconcile it:
 
 ```bash
 git checkout --ours package-lock.json && npm install
@@ -73,6 +78,58 @@ git checkout --ours package-lock.json && npm install
 
 If a change belongs on both branches, it belongs on `main`. Land it there and
 merge down. The overlay should only ever grow if Cloudflare itself demands it.
+
+## Publishing: Cloudflare Workers Builds
+
+No credential ever enters this repository. Cloudflare's GitHub App reads it, builds
+this branch, and deploys. Install the App scoped to **only this repository**.
+
+### One-time setup
+
+1. **Workers & Pages → Create application → Import a repository.** The flow
+   creates the Worker; it does not need to exist first.
+2. **The Worker must be named `revyse-tape`** — Workers Builds fails the build
+   unless the dashboard name matches `name` in `wrangler.jsonc`.
+3. **Settings → Build → Branch control → production branch: `deploy/cloudflare`.**
+   It defaults to the repository's default branch, which is `main`.
+4. **Turn OFF "Builds for non-production branches."** This one matters. `main` has
+   no `wrangler.jsonc`, so a build triggered by a push to `main` fails and paints
+   the repo red. Left on, every commit to `main` produces a failed Cloudflare build
+   for a Worker that `main` never claimed to be.
+5. **Build command: `npm run build`.** Deploy command: leave the default,
+   `npx wrangler deploy`. Root directory: repository root.
+
+Nothing else. No build variables, no secrets, no runtime `vars` — the app needs no
+API key, and `COINBASE_BASE_URL` / `COINBASE_CACHE_TTL_MS` exist only so the
+end-to-end suite can point at a mock upstream.
+
+### What the repository already does for you
+
+- **`.node-version`** pins Node. Workers Builds reads `.node-version` / `.nvmrc` /
+  a `NODE_VERSION` variable — it does **not** read `engines.node`. Without the
+  file you silently get their default.
+- **`.husky/install.mjs`** exits early when `CI` is set. `npm ci` runs `prepare`,
+  which ran `husky`; husky honours `HUSKY=0`, not `CI`, so the guard lives in the
+  repo rather than in a dashboard field somebody has to remember.
+- **No `build.command` in `wrangler.jsonc`.** `wrangler deploy` would run it, and
+  Workers Builds runs its own build command first — you would build twice.
+- **`build/client` is gitignored, and that is fine.** Workers Builds clones, runs
+  the build command, _then_ deploys, so the assets exist by the time
+  `wrangler deploy` reads `assets.directory`. If the build command is ever blank,
+  the deploy fails for a confusing reason: the directory does not exist.
+
+The demo lands at `revyse-tape.<your-subdomain>.workers.dev`. Set the subdomain
+under Workers & Pages if the account has never had one.
+
+Free plan: 3,000 build minutes a month, one concurrent build, 20 minutes maximum
+per build. This build takes well under one.
+
+### Deploying by hand instead
+
+```bash
+npx wrangler login     # once, interactive
+npm run deploy         # build, then wrangler deploy
+```
 
 ## Why the demo is honest
 
