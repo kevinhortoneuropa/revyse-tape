@@ -1,4 +1,4 @@
-import { createCookie } from '@remix-run/node'
+import { createCookie } from '@remix-run/cloudflare'
 
 import { parseThemePreference, type ThemePreference } from '~/lib/theme'
 import { isSecureRequest } from '~/lib/url/secure-request'

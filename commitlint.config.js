@@ -25,6 +25,7 @@ export default {
         'adr',
         'context',
         'scaffold',
+        'cloudflare',
       ],
     ],
     'body-max-line-length': [0, 'always'],

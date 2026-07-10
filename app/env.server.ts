@@ -1,19 +1,19 @@
+import type { AppLoadContext } from '@remix-run/cloudflare'
+
 import type { Env } from './env'
 
 /**
  * The one place in the app that touches the ambient environment.
  *
- * `app/lib` takes its configuration as constructor options and knows nothing
- * about where it runs. A loader reads the environment here and passes it inward.
- * That is what keeps the pure core testable without a process, a network, or a
- * platform.
+ * On Cloudflare Workers there is no process-level environment: `env` is handed
+ * to the `fetch` handler **per request**, so `process.env.FOO` at module scope
+ * evaluates to `undefined`, silently, and nothing fails until production
+ * behaves differently from your laptop.
  *
- * `context` is unused on Node, where configuration lives in the process
- * environment. It is present because it is the seam: a runtime that hands
- * configuration to the *request* rather than to the *process* — a Cloudflare
- * Worker, say, which has no `process` at all — replaces this single file and
- * nothing else.
+ * This file is the seam. On `main` it returns `process.env`; here it returns the
+ * request-scoped binding. Every caller — `app/routes/_index.tsx` — is identical
+ * on both branches, and `app/lib` knows about neither.
  */
-export function readEnv(_context: unknown): Env {
-  return process.env as Env
+export function readEnv(context: AppLoadContext): Env {
+  return context.cloudflare.env
 }

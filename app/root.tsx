@@ -9,7 +9,7 @@ import {
   useRouteError,
   useRouteLoaderData,
 } from '@remix-run/react'
-import type { LinksFunction, LoaderFunctionArgs } from '@remix-run/node'
+import type { LinksFunction, LoaderFunctionArgs } from '@remix-run/cloudflare'
 import type { ReactNode } from 'react'
 
 import { readThemePreference } from '~/features/theme/theme.server'

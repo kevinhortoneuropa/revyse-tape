@@ -1,4 +1,4 @@
-import type { HeadersFunction, LoaderFunctionArgs, MetaFunction } from '@remix-run/node'
+import type { HeadersFunction, LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare'
 import type { ShouldRevalidateFunction } from '@remix-run/react'
 import {
   isRouteErrorResponse,

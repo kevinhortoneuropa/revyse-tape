@@ -10,7 +10,10 @@
   "exclude": ["build", "node_modules"],
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "types": ["@remix-run/node", "vite/client"],
+    // `@cloudflare/workers-types` is deliberately absent: it redeclares Request,
+    // Response and fetch, which collide with the DOM lib the client build needs.
+    // server.ts declares the one interface it wants (ExecutionContext) itself.
+    "types": ["@remix-run/cloudflare", "node", "vite/client"],
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "Bundler",

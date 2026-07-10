@@ -52,6 +52,9 @@ export default tseslint.config(
       ],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       eqeqeq: ['error', 'always', { null: 'ignore' }],
+      // tsconfig sets noPropertyAccessFromIndexSignature, which *requires*
+      // `env['NODE_ENV']`. Without this option the two rules contradict.
+      '@typescript-eslint/dot-notation': ['error', { allowIndexSignaturePropertyAccess: true }],
       // Throwing a Response is how a Remix loader hands control to an
       // ErrorBoundary with a status code. It is the framework's contract, not a
       // mistake — but nothing else may be thrown.

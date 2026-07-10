@@ -37,6 +37,9 @@ playwright/.cache/
 .env
 .env.*
 !.env.example
+# wrangler's local secrets/vars for `wrangler dev`
+.dev.vars
+.dev.vars.*
 
 # Logs
 logs/

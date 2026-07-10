@@ -4,6 +4,8 @@ import { readThemePreference } from '~/features/theme/theme.server'
 
 import { action, loader } from './theme'
 
+const noop = () => undefined
+
 function post(body: Record<string, string>, { dataRequest = false } = {}) {
   const form = new FormData()
   for (const [key, value] of Object.entries(body)) form.append(key, value)
@@ -12,7 +14,14 @@ function post(body: Record<string, string>, { dataRequest = false } = {}) {
   return action({
     request: new Request(url, { method: 'POST', body: form }),
     params: {},
-    context: {},
+    // The action reads nothing from the load context, but Remix's types now
+    // require it: AppLoadContext is augmented with `cloudflare` in load-context.ts.
+    context: {
+      cloudflare: {
+        env: {},
+        ctx: { waitUntil: noop, passThroughOnException: noop },
+      },
+    },
   })
 }
 

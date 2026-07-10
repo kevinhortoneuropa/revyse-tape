@@ -65,18 +65,18 @@ describe('the Secure attribute', () => {
     ).toContain('Secure')
   })
 
-  // The bug this replaces: `secure: process.env.NODE_ENV === 'production'`.
+  // The bug this replaces: `secure: process.env['NODE_ENV'] === 'production'`.
   // It is also what makes this module portable to a runtime with no `process`.
   it('does not depend on NODE_ENV', async () => {
-    const original = process.env.NODE_ENV
+    const original = process.env['NODE_ENV']
     try {
-      process.env.NODE_ENV = 'production'
+      process.env['NODE_ENV'] = 'production'
       expect(await serializeOver('http://localhost/')).not.toContain('Secure')
 
-      process.env.NODE_ENV = 'development'
+      process.env['NODE_ENV'] = 'development'
       expect(await serializeOver('https://revyse.example/')).toContain('Secure')
     } finally {
-      process.env.NODE_ENV = original
+      process.env['NODE_ENV'] = original
     }
   })
 })

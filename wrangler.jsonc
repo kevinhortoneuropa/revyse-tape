@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "revyse-tape",
+
+  // Without `main` there is no Worker at all: the deployment becomes
+  // assets-only, no server code runs, and Remix never renders.
+  "main": "./server.ts",
+  "compatibility_date": "2025-10-31",
+
+  "assets": {
+    "directory": "./build/client",
+
+    // Deliberately NOT set:
+    //
+    //   "not_found_handling": "single-page-application"
+    //     would answer every unmatched route with index.html and a 200, so the
+    //     Worker would never run and the app would be a client-rendered SPA.
+    //
+    //   "binding" / "run_worker_first"
+    //     assets are served before the Worker by default, and unmatched
+    //     requests fall through to it. That is precisely the SSR behaviour we
+    //     want, so there is nothing to wire up and no env.ASSETS.fetch() call.
+  },
+
+  // `nodejs_compat` is absent on purpose. entry.server uses Web Streams
+  // (renderToReadableStream), so no `node:*` module is reachable at runtime.
+  "observability": { "enabled": true },
+}

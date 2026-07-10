@@ -1,61 +1,57 @@
-import { PassThrough } from 'node:stream'
-
-import { createReadableStreamFromReadable, type EntryContext } from '@remix-run/node'
+import type { EntryContext } from '@remix-run/cloudflare'
 import { RemixServer } from '@remix-run/react'
 import { isbot } from 'isbot'
-import { renderToPipeableStream } from 'react-dom/server'
+import { renderToReadableStream } from 'react-dom/server'
 
 /**
- * How long a stream may stay open before we give up on it. Bots get the fully
- * rendered document; humans get the shell as soon as it is ready.
+ * Web Streams, not Node streams.
+ *
+ * `renderToPipeableStream` does not exist on workerd. That is not a missing
+ * Node API — `nodejs_compat` would not help — it is a package-exports problem:
+ * workerd resolves `react-dom/server` to the edge build, which exports only
+ * `renderToReadableStream`. `cloudflareDevProxyVitePlugin` is what sets the
+ * `workerd` resolve condition that makes this import land on the right file.
  */
+
+/** How long a render may stay open before we give up on it. */
 const ABORT_DELAY = 5_000
 
-export default function handleRequest(
+export default async function handleRequest(
   request: Request,
   responseStatusCode: number,
   responseHeaders: Headers,
   remixContext: EntryContext,
 ): Promise<Response> {
-  const userAgent = request.headers.get('user-agent')
+  let statusCode = responseStatusCode
 
-  // Bots need the whole document before they see anything, so we wait for
-  // `onAllReady`. Browsers can start painting from the shell.
-  const readyOption: 'onAllReady' | 'onShellReady' =
-    userAgent !== null && isbot(userAgent) ? 'onAllReady' : 'onShellReady'
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => {
+    controller.abort()
+  }, ABORT_DELAY)
 
-  return new Promise((resolve, reject) => {
-    let shellRendered = false
-    let statusCode = responseStatusCode
-
-    const { pipe, abort } = renderToPipeableStream(
-      <RemixServer context={remixContext} url={request.url} abortDelay={ABORT_DELAY} />,
-      {
-        [readyOption]() {
-          shellRendered = true
-          const body = new PassThrough()
-          const stream = createReadableStreamFromReadable(body)
-
-          responseHeaders.set('Content-Type', 'text/html')
-
-          resolve(new Response(stream, { headers: responseHeaders, status: statusCode }))
-
-          pipe(body)
-        },
-        onShellError(error: unknown) {
-          reject(error instanceof Error ? error : new Error(String(error)))
-        },
-        onError(error: unknown) {
-          statusCode = 500
-          // Errors thrown after the shell has flushed cannot change the status
-          // code, but they still need to reach the logs.
-          if (shellRendered) {
-            console.error(error)
-          }
-        },
+  const body = await renderToReadableStream(
+    <RemixServer context={remixContext} url={request.url} abortDelay={ABORT_DELAY} />,
+    {
+      signal: controller.signal,
+      onError(error: unknown) {
+        statusCode = 500
+        // An abort is our own timeout firing, not a bug worth logging.
+        if (!controller.signal.aborted) console.error(error)
       },
-    )
+    },
+  )
 
-    setTimeout(abort, ABORT_DELAY)
+  void body.allReady.then(() => {
+    clearTimeout(timeoutId)
   })
+
+  // Bots need the whole document before they see anything; browsers can start
+  // painting from the shell.
+  const userAgent = request.headers.get('user-agent')
+  if (userAgent !== null && isbot(userAgent)) {
+    await body.allReady
+  }
+
+  responseHeaders.set('Content-Type', 'text/html')
+  return new Response(body, { headers: responseHeaders, status: statusCode })
 }

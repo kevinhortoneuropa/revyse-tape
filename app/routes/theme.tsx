@@ -1,4 +1,4 @@
-import { redirect, type ActionFunctionArgs } from '@remix-run/node'
+import { redirect, type ActionFunctionArgs } from '@remix-run/cloudflare'
 
 import { serializeThemePreference } from '~/features/theme/theme.server'
 import { parseThemePreference } from '~/lib/theme'

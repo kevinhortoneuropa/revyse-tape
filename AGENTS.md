@@ -8,7 +8,9 @@ enforces each one. Prefer enforcement over documentation: if a rule can be a lin
 rule or a type, it is one, and this file explains why.
 
 Read [`CONTEXT.md`](./CONTEXT.md) for the vocabulary. Read [`docs/adr/`](./docs/adr)
-for why the architecture is shaped this way.
+for why the architecture is shaped this way. **On this branch, read
+[`DEPLOYMENT.md`](./DEPLOYMENT.md)** — it carries two more invariants and the rule
+that keeps this overlay thin.
 
 ---
 

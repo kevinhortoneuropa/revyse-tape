@@ -15,8 +15,8 @@ const { headers, loader, shouldRevalidate } = await import('./_index')
 
 type LoaderArgs = Parameters<typeof loader>[0]
 
-/** remix-serve passes an empty load context; readEnv falls back to process.env. */
-const loaderArgs = { context: {} } as LoaderArgs
+/** The load context a Worker hands a loader. `readEnv` reads `cloudflare.env`. */
+const loaderArgs = { context: { cloudflare: { env: {} } } } as LoaderArgs
 
 type RevalidateArgs = Parameters<typeof shouldRevalidate>[0]
 

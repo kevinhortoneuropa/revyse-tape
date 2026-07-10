@@ -40,18 +40,22 @@ export default defineConfig({
       stdout: 'ignore',
     },
     {
-      // Tests run against the production build, not the dev server: SSR output,
-      // hydration and bundling all differ, and those are what we are asserting on.
-      command: 'npm run build && npx remix-serve ./build/server/index.js',
+      // Tests run against the production build on the real runtime — workerd,
+      // via `wrangler dev` — not against a Node dev server. SSR output,
+      // hydration, bundling and module resolution all differ between the two,
+      // and those are exactly what we assert on.
+      //
+      // Configuration arrives as Worker vars rather than process env, because
+      // on Workers `process.env` at module scope does not exist.
+      command:
+        `npm run build && npx wrangler dev` +
+        ` --port ${String(APP_PORT)} --ip 127.0.0.1` +
+        ` --var COINBASE_BASE_URL:http://localhost:${String(MOCK_PORT)}` +
+        // Defeat the TTL cache so each test observes its own fetch.
+        ` --var COINBASE_CACHE_TTL_MS:0`,
       port: APP_PORT,
       reuseExistingServer: !process.env['CI'],
-      timeout: 120_000,
-      env: {
-        PORT: String(APP_PORT),
-        COINBASE_BASE_URL: `http://localhost:${String(MOCK_PORT)}`,
-        // Defeat the TTL cache so each test observes its own fetch.
-        COINBASE_CACHE_TTL_MS: '0',
-      },
+      timeout: 180_000,
     },
   ],
 })
