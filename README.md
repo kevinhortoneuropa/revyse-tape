@@ -2,6 +2,9 @@
 
 [![CI](https://github.com/kevinhortoneuropa/revyse-tape/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kevinhortoneuropa/revyse-tape/actions/workflows/ci.yml)
 
+**Live demo: <https://revyse-tape.kevinhorton0921.workers.dev/>** — this branch's
+code, server-rendered on Cloudflare Workers. See [Deployment](#deployment).
+
 A cryptocurrency dashboard built with Remix and React. Live Coinbase exchange
 rates in USD and BTC, drag-to-reorder cards, filter by name or symbol, and a dark
 mode that never flashes.
@@ -280,11 +283,12 @@ docs/adr/                     architecture decision records
 nowhere. It has no `server.ts`, no `wrangler.jsonc`, and no opinion about anyone's
 infrastructure.
 
-The live demo runs from **`deploy/cloudflare`**, a thin overlay branch that swaps
-the runtime and nothing else. `git diff main..deploy/cloudflare -- app/lib e2e/`
-is **empty**: the deployed application is this one, and its end-to-end suite runs
-against **workerd**, the runtime it deploys to — so the demo is tested more
-strictly than `main` is, not less.
+The live demo at <https://revyse-tape.kevinhorton0921.workers.dev/> runs from
+**`deploy/cloudflare`**, a thin overlay branch that swaps the runtime and nothing
+else. `git diff main..deploy/cloudflare -- app/lib e2e/` is **empty**: the
+deployed application is this one, and its end-to-end suite runs against
+**workerd**, the runtime it deploys to — so the demo is tested more strictly than
+`main` is, not less.
 
 Everything portable was landed here rather than there: `app/lib` takes its
 configuration as constructor options instead of reading `process.env` at module
@@ -302,9 +306,12 @@ and sync it.
 
 - **`caches.default` instead of the per-isolate TTL cache** on the overlay branch.
   Workers isolates are numerous and short-lived, so the in-memory cache bounds
-  upstream load per isolate rather than globally. The Cache API is per-colo and
-  survives isolate churn — but it is GET-only, refuses anything carrying
-  `Set-Cookie`, and needs an abstraction to keep `app/lib` testable under Node.
+  upstream load per isolate rather than globally. This is observable on the live
+  demo: two requests two seconds apart, well inside the ten-second TTL, come back
+  with different `fetchedAt` values, because they were served by different
+  isolates. The Cache API is per-colo and survives isolate churn — but it is
+  GET-only, refuses anything carrying `Set-Cookie`, and needs an abstraction to
+  keep `app/lib` testable under Node.
 - **Virtualise the grid** if the tracked list grew past ~100 cards.
 - **Server-persisted ordering** if the app ever gained accounts. That would give
   the authentication bonus an actual purpose, and change who owns Ordering.
