@@ -69,9 +69,10 @@ differs — and the overlay's suite runs against **workerd**, the runtime it
 deploys to, so the demo is tested more strictly than `main` is, not less.
 
 **Merges go one way**, `main` → `deploy/cloudflare`, never back. If a change
-belongs on both, it belongs on `main`. `package-lock.json` is the only file that
-reliably conflicts, because both branches regenerate it; the resolution is to take
-the branch's lockfile and rerun `npm install`, never to hand-merge JSON.
+belongs on both, it belongs on `main`. Two files conflict: `package.json`, because
+both branches edit the `scripts` block, and `package-lock.json` whenever a
+dependency changes. Never hand-merge the lockfile — take the branch's copy and
+rerun `npm install`. The procedure lives in `DEPLOYMENT.md`, on the overlay.
 
 **The overlay can rot.** Nothing forces it to be merged, so `deploy/cloudflare`
 can silently fall behind. That is the price of keeping `main` vendor-free, and it
